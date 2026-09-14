@@ -29,7 +29,7 @@ Data source order (first one that works wins):
   3. recipes/recipes-cache.json, written after every successful fetch.
 
 "Cook with X" suggestions call Claude (claude-opus-5) and need
-ANTHROPIC_API_KEY set in the environment.
+ANTHROPIC_API_KEY, either exported in the shell or in recipes/.env.
 """
 
 import csv
@@ -49,6 +49,25 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ingredients import tag_text  # noqa: E402
 import ai  # noqa: E402
+
+def _load_dotenv():
+    """Load KEY=value lines from recipes/.env into os.environ (no overrides)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip('"').strip("'")
+            if k.startswith("export "):
+                k = k[7:].strip()
+            os.environ.setdefault(k, v)
+
+
+_load_dotenv()
 
 PORT = int(os.environ.get("PORT", "8090"))
 SHEET_ID = os.environ.get(

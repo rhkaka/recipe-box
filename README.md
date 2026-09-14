@@ -6,9 +6,11 @@ lets you search recipes, filter by ingredient, and sort by star rating.
 ## Run
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # only needed for the "Cook with" tab
-uv run recipes/server.py
+cp recipes/.env.example recipes/.env   # then paste your Anthropic key into it
+uv run recipes/server.py               # or double-click recipes/start.command
 ```
+
+The key can also be exported in the shell instead of using `.env`.
 
 `uv run` reads the dependency list at the top of `server.py` and installs the
 Google and Anthropic SDKs into a cached environment on first run (Python 3.11+
