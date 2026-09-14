@@ -55,11 +55,12 @@ def main():
     if password:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         salt, iv, iterations = os.urandom(16), os.urandom(12), 300_000
-        key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations, dklen=32)
+        # Case-insensitive: the page lowercases what the user types too.
+        key = hashlib.pbkdf2_hmac("sha256", password.lower().encode(), salt, iterations, dklen=32)
         plaintext = json.dumps(data, ensure_ascii=False).encode()
         ciphertext = AESGCM(key).encrypt(iv, plaintext, None)
         payload = {
-            "encrypted": True,
+            "encrypted": True, "case_insensitive": True,
             "kdf": "PBKDF2-SHA256", "iterations": iterations,
             "salt": base64.b64encode(salt).decode(),
             "iv": base64.b64encode(iv).decode(),

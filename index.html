@@ -726,7 +726,8 @@
         e.preventDefault();
         els.gateBtn.disabled = true; els.gateErr.textContent = '';
         try {
-          const key = await deriveKey(els.gatePw.value, b64dec(payload.salt), payload.iterations);
+          const typed = payload.case_insensitive ? els.gatePw.value.trim().toLowerCase() : els.gatePw.value;
+          const key = await deriveKey(typed, b64dec(payload.salt), payload.iterations);
           const data = await decryptWith(key, payload);
           await rememberKey(key, els.gateRemember.checked);
           els.gate.hidden = true; els.gatePw.value = '';
