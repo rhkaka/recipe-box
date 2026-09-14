@@ -40,7 +40,16 @@ Data is re-read every 5 minutes, or immediately with the **Refresh** button.
 A static snapshot lives at https://rhkaka.github.io/recipe-box/ and is served
 from the `docs/` folder. It supports search, ingredient filters, and rating
 sort. It can't refresh from the sheet or use "Cook with", and staple edits
-there are saved per browser. To update it after changing the sheet:
+there are saved per browser.
+
+**Password:** the hosted copy asks for a password. Set `RECIPE_BOX_PASSWORD`
+in `.env` before building; the recipe data is then encrypted in the repo
+(AES-256-GCM, key derived from the password with PBKDF2) and decrypted in the
+browser after the password is entered. "Remember on this device" keeps it
+unlocked in that browser. To change the password, edit `.env`, rebuild, and
+push. Leave it blank to publish without a password.
+
+To update the hosted copy after changing the sheet or the password:
 
 ```bash
 uv run build_static.py

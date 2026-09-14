@@ -40,6 +40,7 @@
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { color-scheme: light dark; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
@@ -249,6 +250,20 @@
   .dlg .tags .tag:hover { background: var(--accent-soft); color: var(--accent); }
   .dlg .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
 
+  /* Password gate (hosted copy) */
+  .gate { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .gate[hidden] { display: none; }
+  .gate-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 30px 28px; width: min(380px, 100%); text-align: center; display: flex; flex-direction: column; gap: 12px; }
+  .gate-card .icon { font-size: 40px; }
+  .gate-card h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+  .gate-card p { margin: 0 0 4px; color: var(--ink-2); font-size: 14px; }
+  .gate-card input[type=password] { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-size: 16px; outline: none; text-align: center; }
+  .gate-card input[type=password]:focus { border-color: var(--accent); }
+  .gate-card label { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; justify-content: center; align-items: center; }
+  .gate-card button { border: 0; background: var(--accent); color: #fff; border-radius: 12px; padding: 12px; font-weight: 600; cursor: pointer; font-size: 15px; }
+  .gate-card button:disabled { opacity: .6; }
+  .gate-err { color: #d64545; font-size: 13px; min-height: 18px; }
+
   @media (max-width: 640px) {
     .cook-form { flex-direction: column; }
     .cook-form button { padding: 12px; }
@@ -355,6 +370,18 @@
   </section>
 </div>
 
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gateForm">
+    <div class="icon">🔒</div>
+    <h2>Aleena’s Recipe Box</h2>
+    <p>Enter the password to open the recipes.</p>
+    <input type="password" id="gatePw" autocomplete="current-password" placeholder="Password" required>
+    <label><input type="checkbox" id="gateRemember" checked> Remember on this device</label>
+    <button type="submit" id="gateBtn">Open</button>
+    <div class="gate-err" id="gateErr"></div>
+  </form>
+</div>
+
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 
 <script>window.RB_STATIC = true;</script>
@@ -366,7 +393,7 @@
     ratingSeg: $('#ratingSeg'), chips: $('#chips'), ingQ: $('#ingQ'), active: $('#active'),
     count: $('#count'), grid: $('#grid'), status: $('#status'), refresh: $('#refresh'),
     sheetLink: $('#sheetLink'), dlg: $('#dlg'), dlgBody: $('#dlgBody'),
-    viewSeg: $('#viewSeg'),
+    viewSeg: $('#viewSeg'), gate: $('#gate'), gateForm: $('#gateForm'), gatePw: $('#gatePw'), gateRemember: $('#gateRemember'), gateBtn: $('#gateBtn'), gateErr: $('#gateErr'),
     tabs: $('#tabs'), panelRecipes: $('#panel-recipes'), panelCook: $('#panel-cook'),
     cookForm: $('#cookForm'), cookQ: $('#cookQ'), cookBtn: $('#cookBtn'), cookOut: $('#cookOut'),
     staplesBtn: $('#staplesBtn'), staplesCount: $('#staplesCount'), staples: $('#staples'),
@@ -414,7 +441,8 @@
     els.status.innerHTML = '<span class="dot warn"></span>Loading…';
     try {
       const res = await fetch(STATIC ? 'data.json' : '/api/recipes' + (force ? '?refresh=1' : ''));
-      const data = await res.json();
+      let data = await res.json();
+      if (STATIC && data.encrypted) data = await unlock(data);
       state.recipes = data.recipes || [];
       state.sheetUrl = data.sheet_url || '#';
       els.sheetLink.href = state.sheetUrl;
@@ -664,6 +692,54 @@
     if (e.key === '/' && document.activeElement !== els.q && document.activeElement !== els.ingQ) { e.preventDefault(); els.q.focus(); }
     if (e.key === 'Escape' && document.activeElement === els.q && els.q.value) { els.q.value = ''; state.q = ''; render(); }
   });
+
+  // ---------- password gate (hosted copy): AES-GCM key derived from the password with PBKDF2
+  const b64dec = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const b64enc = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const KEY_STORE = 'rb.key';
+  async function deriveKey(password, salt, iterations) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, true, ['decrypt']);
+  }
+  async function decryptWith(key, payload) {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64dec(payload.iv) }, key, b64dec(payload.ciphertext));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  async function storedKey() {
+    let raw = null;
+    try { raw = sessionStorage.getItem(KEY_STORE) || localStorage.getItem(KEY_STORE); } catch (e) {}
+    if (!raw) return null;
+    try { return await crypto.subtle.importKey('raw', b64dec(raw), 'AES-GCM', true, ['decrypt']); } catch (e) { return null; }
+  }
+  async function rememberKey(key, persist) {
+    const raw = b64enc(await crypto.subtle.exportKey('raw', key));
+    try { sessionStorage.setItem(KEY_STORE, raw); if (persist) localStorage.setItem(KEY_STORE, raw); } catch (e) {}
+  }
+  function unlock(payload) {
+    return new Promise(async (resolve) => {
+      const saved = await storedKey();
+      if (saved) {
+        try { resolve(await decryptWith(saved, payload)); return; } catch (e) { try { localStorage.removeItem(KEY_STORE); sessionStorage.removeItem(KEY_STORE); } catch (e2) {} }
+      }
+      els.gate.hidden = false; els.gatePw.focus();
+      els.gatePw.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); els.gateForm.requestSubmit(); } };
+      els.gateForm.onsubmit = async (e) => {
+        e.preventDefault();
+        els.gateBtn.disabled = true; els.gateErr.textContent = '';
+        try {
+          const key = await deriveKey(els.gatePw.value, b64dec(payload.salt), payload.iterations);
+          const data = await decryptWith(key, payload);
+          await rememberKey(key, els.gateRemember.checked);
+          els.gate.hidden = true; els.gatePw.value = '';
+          resolve(data);
+        } catch (err) {
+          els.gateErr.textContent = 'Wrong password. Try again.';
+          els.gatePw.select();
+        }
+        els.gateBtn.disabled = false;
+      };
+    });
+  }
 
   // ---------- tabs
   function showTab(name) {
