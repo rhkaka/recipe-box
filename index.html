@@ -400,6 +400,7 @@
   };
 
   const STATIC = !!window.RB_STATIC; // set by build_static.py for the GitHub Pages build
+  const SHOW_COOK = false; // flip to true to bring back the "Cook with…" tab (code is all still here)
   const state = {
     recipes: [], tagCounts: [],
     q: '', minStars: 0, sort: localStorage.getItem('rb.sort') || 'stars-desc',
@@ -808,9 +809,13 @@
     if (b.dataset.open) openDetail(+b.dataset.open);
   });
 
+  if (!SHOW_COOK) {
+    els.tabs.querySelector('[data-tab="cook"]').hidden = true;
+    els.tabs.hidden = true; // only one tab left, so hide the bar entirely
+  }
   let savedTab = 'recipes';
   try { savedTab = localStorage.getItem('rb.tab') || 'recipes'; } catch (e) {}
-  if (savedTab === 'cook') showTab('cook');
+  if (savedTab === 'cook' && SHOW_COOK) showTab('cook');
 
   load(false);
 })();
