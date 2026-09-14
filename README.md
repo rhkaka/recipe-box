@@ -33,6 +33,18 @@ successful fetch so the site still works offline.
 
 Data is re-read every 5 minutes, or immediately with the **Refresh** button.
 
+## Hosted copy (GitHub Pages)
+
+A static snapshot lives at https://rhkaka.github.io/recipe-box/ and is served
+from the `docs/` folder. It supports search, ingredient filters, and rating
+sort. It can't refresh from the sheet or use "Cook with", and staple edits
+there are saved per browser. To update it after changing the sheet:
+
+```bash
+uv run build_static.py
+git add docs && git commit -m "Update snapshot" && git push
+```
+
 ## Sheet layout
 
 No header row. Columns: `A` name, `B` recipe (a URL or the instructions),
@@ -78,6 +90,7 @@ of your collection.
 - `ai.py` – "Cook with" suggestions via the Anthropic SDK
 - `ingredients.py` – ingredient dictionary (tag, regex)
 - `index.html` – the whole frontend, no build step
+- `build_static.py` – writes the GitHub Pages snapshot into `docs/`
 - `staples.json` – pantry staples hidden from the ingredient filter (editable in the UI)
 - `recipes-cache.json` – last successful fetch (generated)
 - `ai-cache.json` – saved AI answers (generated)
