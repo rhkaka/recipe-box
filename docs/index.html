@@ -699,9 +699,9 @@
 
   function renderCook(d) {
     if (d.error) {
-      const setup = d.error === 'no_api_key' || d.error === 'no_sdk';
+      const setup = d.error === 'no_api_key' || d.error === 'no_sdk' || d.error === 'bad_api_key';
       els.cookOut.innerHTML = `<div class="cook-error"><b>${setup ? 'One-time setup needed' : d.error === 'static' ? 'Not available on the hosted copy' : 'Something went wrong'}</b>${esc(d.message)}${
-        d.error === 'no_api_key' ? '<br><br>In the terminal, before starting the server:<br><code>export ANTHROPIC_API_KEY=sk-ant-…</code><br><code>uv run recipes/server.py</code>' : ''}</div>`;
+        d.error === 'no_api_key' ? '<br><br>Create a file called <code>.env</code> in the recipes folder containing:<br><code>ANTHROPIC_API_KEY=sk-ant-…</code><br>then start the server again (double-click <code>start.command</code> or run <code>uv run server.py</code>).' : ''}</div>`;
       return;
     }
     const fitClass = { 'substitute': 'sub', 'addition': 'add', 'already uses it': 'uses' };

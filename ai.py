@@ -126,8 +126,8 @@ def suggest(ingredient, recipes, staples, force=False):
                or os.path.exists(os.path.expanduser("~/.config/anthropic")))
     if not has_key:
         raise AIError("no_api_key",
-                      "No Anthropic API key. Set ANTHROPIC_API_KEY in the shell before "
-                      "starting the server (export ANTHROPIC_API_KEY=sk-ant-...).")
+                      "No Anthropic API key found. Put ANTHROPIC_API_KEY=sk-ant-... in "
+                      "recipes/.env (see .env.example) and restart the server.")
 
     client = anthropic.Anthropic()
     try:
@@ -146,9 +146,13 @@ def suggest(ingredient, recipes, staples, force=False):
             output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
         )
     except anthropic.AuthenticationError:
-        raise AIError("no_api_key",
-                      "No Anthropic API key. Set ANTHROPIC_API_KEY in the shell before "
-                      "starting the server (export ANTHROPIC_API_KEY=sk-ant-...).")
+        raise AIError("bad_api_key",
+                      "The Anthropic API rejected the key (401). Check ANTHROPIC_API_KEY "
+                      "in recipes/.env for typos or an expired key, then restart the server.")
+    except anthropic.PermissionDeniedError:
+        raise AIError("bad_api_key",
+                      "The Anthropic API refused this key (403). It may lack access to "
+                      f"{MODEL} or have no credit. Check console.anthropic.com.")
     except anthropic.RateLimitError:
         raise AIError("rate_limited", "Rate limited by the API. Try again in a minute.")
     except anthropic.APIStatusError as e:
