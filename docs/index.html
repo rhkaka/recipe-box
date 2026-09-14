@@ -203,6 +203,30 @@
   .tag { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
   .tag.hit { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
+  /* Compact list view */
+  .grid.list { display: flex; flex-direction: column; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .row { border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; width: 100%; border: 0; background: transparent; text-align: left; }
+  .row-head:hover { background: var(--surface-2); }
+  .row-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .row-head .name { flex: 1; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-head .stars { font-size: 13px; }
+  .row-head .rtags { display: flex; gap: 4px; max-width: 40%; overflow: hidden; }
+  .row-head .rtags .tag { white-space: nowrap; }
+  .row-head .chev { color: var(--ink-3); transition: transform .15s; flex: none; }
+  .row.open .chev { transform: rotate(90deg); }
+  .row.open .row-head { background: var(--surface-2); }
+  .row-body { display: none; padding: 4px 16px 18px 16px; border-top: 1px dashed var(--line); }
+  .row.open .row-body { display: block; }
+  .row-body h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+  .row-body p { margin: 0 0 10px; white-space: pre-wrap; max-width: 78ch; }
+  .row-body .notes-box { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; max-width: 78ch; }
+  .row-body .tags .tag { cursor: pointer; }
+  .row-body .tags .tag:hover { background: var(--accent-soft); color: var(--accent); }
+  .row-body .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  @media (max-width: 640px) { .row-head .rtags { display: none; } }
+
   .empty { text-align: center; color: var(--ink-2); padding: 60px 0; }
   .empty b { display: block; font-size: 18px; color: var(--ink); margin-bottom: 6px; }
 
@@ -274,6 +298,10 @@
         <button data-min="4"><span class="s">★</span> 4+</button>
         <button data-min="3"><span class="s">★</span> 3+</button>
       </div>
+      <div class="seg" id="viewSeg" title="List or cards">
+        <button data-view="list" class="on">☰ List</button>
+        <button data-view="cards">▦ Cards</button>
+      </div>
       <select id="sort" aria-label="Sort">
         <option value="stars-desc">Rating: high → low</option>
         <option value="stars-asc">Rating: low → high</option>
@@ -338,6 +366,7 @@
     ratingSeg: $('#ratingSeg'), chips: $('#chips'), ingQ: $('#ingQ'), active: $('#active'),
     count: $('#count'), grid: $('#grid'), status: $('#status'), refresh: $('#refresh'),
     sheetLink: $('#sheetLink'), dlg: $('#dlg'), dlgBody: $('#dlgBody'),
+    viewSeg: $('#viewSeg'),
     tabs: $('#tabs'), panelRecipes: $('#panel-recipes'), panelCook: $('#panel-cook'),
     cookForm: $('#cookForm'), cookQ: $('#cookQ'), cookBtn: $('#cookBtn'), cookOut: $('#cookOut'),
     staplesBtn: $('#staplesBtn'), staplesCount: $('#staplesCount'), staples: $('#staples'),
@@ -352,6 +381,8 @@
     free: new Set(),      // free-text ingredient terms (matched against text)
     showAllChips: false, chipFilter: '', sheetUrl: '#',
     staples: new Set(), // pantry items hidden from the filter
+    view: localStorage.getItem('rb.view') || 'list',
+    expanded: new Set(),
   };
   const CHIP_LIMIT = 36;
 
@@ -490,8 +521,26 @@
     const total = state.recipes.length;
     els.count.textContent = list.length === total ? `${total} recipes` : `${list.length} of ${total} recipes`;
     els.searchWrap.classList.toggle('has-value', !!state.q);
+    els.grid.classList.toggle('list', state.view === 'list');
     if (!list.length) {
       els.grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No recipes match</b>Try fewer ingredients or a different search.</div>`;
+      return;
+    }
+    if (state.view === 'list') {
+      els.grid.innerHTML = list.map((r) => {
+        const open = state.expanded.has(r.id);
+        const vt = visibleTags(r);
+        return `<div class="row ${open ? 'open' : ''}" data-id="${r.id}">
+          <button class="row-head" aria-expanded="${open}">
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+            <span class="name">${highlight(r.name, hl)}</span>
+            <span class="rtags">${vt.slice(0, 3).map((t) => `<span class="tag ${state.tags.has(t) ? 'hit' : ''}">${esc(t)}</span>`).join('')}</span>
+            ${r.url ? '<span class="badge">link</span>' : ''}
+            ${stars(r.stars)}
+          </button>
+          ${open ? `<div class="row-body">${detailBody(r, hl)}</div>` : ''}
+        </div>`;
+      }).join('');
       return;
     }
     els.grid.innerHTML = list.map((r) => {
@@ -511,14 +560,10 @@
     }).join('');
   }
 
-  function openDetail(id) {
-    const r = state.recipes.find((x) => x.id === id);
-    if (!r) return;
+  function detailBody(r, hl) {
     const rowUrl = state.sheetUrl.replace(/#gid=(\d+)$/, `#gid=$1&range=A${r.id + 1}`);
-    const paragraphs = (t) => t.split(/\n{2,}/).map((p) => `<p>${esc(p)}</p>`).join('');
-    els.dlgBody.innerHTML = `
-      <div class="dlg-head"><h2>${esc(r.name)}</h2><button class="close" data-close="1" aria-label="Close">✕</button></div>
-      <div class="meta">${stars(r.stars)}<span class="badge">${r.stars} / 5</span></div>
+    const paragraphs = (t) => t.split(/\n{2,}/).map((p) => `<p>${highlight(p, hl || [])}</p>`).join('');
+    return `
       ${r.url ? `<h4>Recipe</h4><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p>` : `<h4>Instructions</h4>${paragraphs(r.instructions)}`}
       ${r.notes ? `<h4>Notes</h4><div class="notes-box">${paragraphs(r.notes)}</div>` : ''}
       ${visibleTags(r).length ? `<h4>Ingredients spotted</h4><div class="tags">${visibleTags(r).map((t) => `<button class="tag" data-tag="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
@@ -527,6 +572,15 @@
         ${r.url ? `<a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Open recipe ↗</a>` : ''}
         <a class="btn" href="${esc(rowUrl)}" target="_blank" rel="noopener">Edit row in sheet ↗</a>
       </div>`;
+  }
+
+  function openDetail(id) {
+    const r = state.recipes.find((x) => x.id === id);
+    if (!r) return;
+    els.dlgBody.innerHTML = `
+      <div class="dlg-head"><h2>${esc(r.name)}</h2><button class="close" data-close="1" aria-label="Close">✕</button></div>
+      <div class="meta">${stars(r.stars)}<span class="badge">${r.stars} / 5</span></div>
+      ${detailBody(r)}`;
     els.dlg.showModal();
   }
 
@@ -566,8 +620,21 @@
     renderChips(); render();
   });
   els.grid.addEventListener('click', (e) => {
-    const c = e.target.closest('.card'); if (c) openDetail(+c.dataset.id);
+    const c = e.target.closest('.card'); if (c) { openDetail(+c.dataset.id); return; }
+    const tagBtn = e.target.closest('.row-body button.tag');
+    if (tagBtn) { state.tags.add(tagBtn.dataset.tag); renderChips(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    const head = e.target.closest('.row-head'); if (!head) return;
+    const id = +head.closest('.row').dataset.id;
+    state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id);
+    render();
   });
+  els.viewSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.view = b.dataset.view; localStorage.setItem('rb.view', state.view);
+    [...els.viewSeg.children].forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  });
+  [...els.viewSeg.children].forEach((x) => x.classList.toggle('on', x.dataset.view === state.view));
   els.dlgBody.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.close) els.dlg.close();
