@@ -1,4 +1,4 @@
-# Recipe Box
+# Aleena’s Recipe Box
 
 A locally hosted site that reads your recipe spreadsheet from Google Sheets and
 lets you search recipes, filter by ingredient, and sort by star rating.
