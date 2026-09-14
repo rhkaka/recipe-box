@@ -1,0 +1,12 @@
+# generated data
+recipes-cache.json
+ai-cache.json
+
+# secrets (never commit)
+credentials.json
+token.json
+.env
+
+__pycache__/
+*.pyc
+.DS_Store

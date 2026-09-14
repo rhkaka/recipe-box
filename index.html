@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recipe Box</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>">
+<style>
+  :root {
+    --bg: #faf6f0;
+    --surface: #ffffff;
+    --surface-2: #f3ece2;
+    --ink: #2b2620;
+    --ink-2: #6b6259;
+    --ink-3: #9a9087;
+    --line: #e6ddd0;
+    --accent: #c2410c;
+    --accent-soft: #fde8d8;
+    --star: #e8a317;
+    --star-off: #ddd3c6;
+    --mark: #fff1a8;
+    --shadow: 0 1px 2px rgba(43,38,32,.06), 0 6px 20px rgba(43,38,32,.06);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171411;
+      --surface: #221e1a;
+      --surface-2: #2c2622;
+      --ink: #f1eae1;
+      --ink-2: #b7ada2;
+      --ink-3: #7f766d;
+      --line: #3a332d;
+      --accent: #f1854c;
+      --accent-soft: #3d2416;
+      --star: #f2b63c;
+      --star-off: #3f3832;
+      --mark: #5a4a10;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  button, input, select { font: inherit; color: inherit; }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* Header */
+  header { display: flex; align-items: center; gap: 16px; padding: 26px 0 14px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+  header h1 span { font-size: 28px; }
+  .status { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #3aa76d; display: inline-block; margin-right: 6px; }
+  .dot.warn { background: #d9a125; }
+  .dot.err { background: #d64545; }
+  .btn {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+    padding: 7px 14px; cursor: pointer; font-size: 13px; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  }
+  .btn:hover { border-color: var(--ink-3); }
+  .btn.spin svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .tabs button { border: 0; background: transparent; padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; gap: 6px; align-items: center; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel[hidden] { display: none; }
+
+  /* Cook with */
+  .cook-hero { max-width: 720px; margin: 8px auto 26px; text-align: center; }
+  .cook-hero h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.02em; }
+  .cook-hero p { margin: 0 0 18px; color: var(--ink-2); }
+  .cook-form { display: flex; gap: 8px; }
+  .cook-form input { flex: 1; padding: 13px 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 16px; outline: none; box-shadow: var(--shadow); }
+  .cook-form input:focus { border-color: var(--accent); }
+  .cook-form button { border: 0; background: var(--accent); color: #fff; border-radius: 12px; padding: 0 20px; font-weight: 600; cursor: pointer; font-size: 15px; white-space: nowrap; }
+  .cook-form button:disabled { opacity: .6; cursor: default; }
+  .cook-examples { margin-top: 10px; font-size: 13px; color: var(--ink-3); }
+  .cook-examples button { border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+  .cook-status { text-align: center; color: var(--ink-2); padding: 30px 0; }
+  .cook-status .spinner { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .9s linear infinite; margin: 0 auto 12px; }
+  .cook-error { max-width: 720px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid #d64545; border-radius: var(--radius); padding: 16px 18px; }
+  .cook-error b { display: block; margin-bottom: 4px; }
+  .cook-error code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+  .cook-summary { max-width: 760px; margin: 0 auto 20px; font-size: 16px; line-height: 1.55; text-align: center; color: var(--ink); }
+  .cook-meta { text-align: center; font-size: 12px; color: var(--ink-3); margin: -12px 0 20px; }
+  .cook-meta button { border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 12px; }
+  .cook-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .cook-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+  .cook-card .top { display: flex; align-items: flex-start; gap: 10px; }
+  .cook-card h3 { margin: 0; font-size: 16.5px; flex: 1; line-height: 1.3; }
+  .cook-card h3 button { border: 0; background: transparent; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+  .cook-card h3 button:hover { color: var(--accent); }
+  .fit { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .fit.sub { background: var(--accent-soft); color: var(--accent); }
+  .fit.add { background: #e3f1e8; color: #1f6b3d; }
+  .fit.uses { background: var(--surface-2); color: var(--ink-2); }
+  @media (prefers-color-scheme: dark) { .fit.add { background: #1c3324; color: #7fd39a; } }
+  .cook-card .replaces { font-size: 13px; color: var(--ink-2); }
+  .cook-card .how { font-size: 14px; line-height: 1.5; }
+  .cook-card .conf { font-size: 11.5px; color: var(--ink-3); margin-top: auto; }
+  .cook-card.idea { border-style: dashed; background: var(--surface-2); }
+  .cook-card.idea .how { color: var(--ink-2); }
+
+
+  .toolbar {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 10px 0 12px; display: grid; gap: 10px;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+  .search { position: relative; }
+  .search input {
+    width: 100%; padding: 12px 40px 12px 42px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--surface); outline: none;
+    font-size: 16px; box-shadow: var(--shadow);
+  }
+  .search input:focus { border-color: var(--accent); }
+  .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
+  .search .clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--ink-3); cursor: pointer; padding: 6px; border-radius: 8px; display: none; }
+  .search .clear:hover { background: var(--surface-2); }
+  .search.has-value .clear { display: block; }
+  .kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  .search.has-value .kbd { display: none; }
+
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px; }
+  .seg button { border: 0; background: transparent; padding: 5px 11px; border-radius: 999px; cursor: pointer; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+  .seg button.on { background: var(--ink); color: var(--bg); }
+  .seg button .s { color: var(--star); }
+  .seg button.on .s { color: var(--star); }
+  select { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
+
+  /* Ingredients */
+  .ingredients { margin: 6px 0 14px; }
+  .ing-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ing-head label { font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
+  .ing-head input {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+    padding: 6px 12px; font-size: 13px; outline: none; min-width: 220px;
+  }
+  .ing-head input:focus { border-color: var(--accent); }
+  .ing-head .hint { font-size: 12px; color: var(--ink-3); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+    padding: 4px 10px; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
+    transition: background .12s, border-color .12s;
+  }
+  .chip:hover { border-color: var(--ink-3); }
+  .chip .n { color: var(--ink-3); font-size: 11px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.on .n { color: rgba(255,255,255,.75); }
+  .chip.free { border-style: dashed; }
+  .chip.more { background: transparent; color: var(--accent); border-color: transparent; }
+  .ing-head .staples-btn { margin-left: auto; }
+  .ing-head .staples-btn.open { background: var(--surface-2); }
+  .staples { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin: 10px 0 12px; }
+  .staples[hidden] { display: none; }
+  .staples p { margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
+  .staples form { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .staples form input { flex: 1; min-width: 200px; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 12px; font-size: 13px; outline: none; }
+  .staples form input:focus { border-color: var(--accent); }
+  .staples .chip { background: var(--surface-2); }
+  .staples .chip .x { color: var(--ink-3); }
+  .staples .chip:hover .x { color: var(--accent); }
+  .tag.staple { opacity: .6; }
+
+  .active { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; font-size: 13px; color: var(--ink-2); }
+  .active:empty { display: none; }
+  .active .chip.on .x { opacity: .8; }
+  .active .clear-all { border: 0; background: transparent; color: var(--accent); cursor: pointer; padding: 4px 6px; font-size: 13px; }
+
+  .count { font-size: 13px; color: var(--ink-2); margin: 0 0 12px; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 16px 14px; box-shadow: var(--shadow); cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+    transition: transform .12s, border-color .12s; text-align: left;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--ink-3); }
+  .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .card h3 { margin: 0; font-size: 16.5px; line-height: 1.3; letter-spacing: -.01em; }
+  .card .meta { display: flex; align-items: center; gap: 8px; }
+  .stars { color: var(--star); letter-spacing: 1px; font-size: 14px; white-space: nowrap; }
+  .stars .off { color: var(--star-off); }
+  .badge { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); }
+  .card .snippet { color: var(--ink-2); font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .notes { color: var(--ink-3); font-size: 13px; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-left: 2px solid var(--line); padding-left: 8px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 4px; }
+  .tag { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+  .tag.hit { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .empty { text-align: center; color: var(--ink-2); padding: 60px 0; }
+  .empty b { display: block; font-size: 18px; color: var(--ink); margin-bottom: 6px; }
+
+  /* Detail dialog */
+  dialog {
+    border: 0; border-radius: 18px; padding: 0; background: var(--surface); color: var(--ink);
+    width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 40px); box-shadow: 0 30px 80px rgba(0,0,0,.35);
+  }
+  dialog::backdrop { background: rgba(20,15,10,.45); backdrop-filter: blur(3px); }
+  .dlg { padding: 26px 28px 28px; overflow: auto; max-height: calc(100vh - 40px); }
+  .dlg-head { display: flex; align-items: flex-start; gap: 12px; }
+  .dlg-head h2 { margin: 0; font-size: 24px; line-height: 1.2; letter-spacing: -.02em; flex: 1; }
+  .dlg .close { border: 0; background: var(--surface-2); border-radius: 50%; width: 34px; height: 34px; cursor: pointer; font-size: 18px; line-height: 1; color: var(--ink-2); flex: none; }
+  .dlg .meta { display: flex; align-items: center; gap: 12px; margin: 10px 0 18px; flex-wrap: wrap; }
+  .dlg .stars { font-size: 18px; }
+  .dlg h4 { margin: 18px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+  .dlg p { margin: 0 0 10px; white-space: pre-wrap; }
+  .dlg .notes-box { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+  .dlg .tags .tag { cursor: pointer; }
+  .dlg .tags .tag:hover { background: var(--accent-soft); color: var(--accent); }
+  .dlg .links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+
+  @media (max-width: 640px) {
+    .cook-form { flex-direction: column; }
+    .cook-form button { padding: 12px; }
+    .cook-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 0 12px 40px; }
+    header { padding: 18px 0 8px; }
+    header h1 { font-size: 22px; }
+    .toolbar { grid-template-columns: 1fr; }
+    .controls { justify-content: space-between; }
+    .grid { grid-template-columns: 1fr; }
+    .dlg { padding: 20px 18px 24px; }
+    .kbd { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>🍲</span>Recipe Box</h1>
+    <div class="status">
+      <span id="status"><span class="dot warn"></span>Loading…</span>
+      <a id="sheetLink" class="btn" href="#" target="_blank" rel="noopener">Open sheet ↗</a>
+      <button id="refresh" class="btn" title="Re-read the spreadsheet">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="on" data-tab="recipes">📖 Recipes</button>
+    <button data-tab="cook">✨ Cook with…</button>
+  </nav>
+
+  <section class="panel" id="panel-recipes">
+  <div class="toolbar">
+    <div class="search" id="searchWrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search recipes, ingredients, notes…" autocomplete="off" spellcheck="false">
+      <span class="kbd">/</span>
+      <button class="clear" id="clearQ" aria-label="Clear search">✕</button>
+    </div>
+    <div class="controls">
+      <div class="seg" id="ratingSeg">
+        <button data-min="0" class="on">All</button>
+        <button data-min="5"><span class="s">★</span> 5</button>
+        <button data-min="4"><span class="s">★</span> 4+</button>
+        <button data-min="3"><span class="s">★</span> 3+</button>
+      </div>
+      <select id="sort" aria-label="Sort">
+        <option value="stars-desc">Rating: high → low</option>
+        <option value="stars-asc">Rating: low → high</option>
+        <option value="name">Name A → Z</option>
+        <option value="sheet">Sheet order</option>
+        <option value="sheet-rev">Newest first</option>
+      </select>
+    </div>
+  </div>
+
+  <section class="ingredients">
+    <div class="ing-head">
+      <label for="ingQ">Ingredients</label>
+      <input id="ingQ" type="search" placeholder="Find an ingredient… (Enter adds a custom one)" autocomplete="off">
+      <span class="hint">Click to filter · pick several to require all of them</span>
+      <button class="btn staples-btn" id="staplesBtn" type="button">Staples <span id="staplesCount"></span></button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="staples" id="staples" hidden>
+      <p>Pantry staples are hidden from the ingredient filter and recipe cards. They're still searchable.</p>
+      <form id="stapleForm">
+        <input id="stapleInput" list="tagList" placeholder="Add a staple… (e.g. cumin)" autocomplete="off">
+        <datalist id="tagList"></datalist>
+        <button class="btn" type="submit">Add</button>
+      </form>
+      <div class="chips" id="stapleChips"></div>
+    </div>
+  </section>
+
+  <div class="active" id="active"></div>
+  <p class="count" id="count"></p>
+  <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="panel" id="panel-cook" hidden>
+    <div class="cook-hero">
+      <h2>What do you have?</h2>
+      <p>Name an ingredient and Claude will look through your recipes for where it fits, what it can stand in for, and how to adapt the dish.</p>
+      <form class="cook-form" id="cookForm">
+        <input id="cookQ" type="text" placeholder="e.g. steelhead trout, leftover roast chicken, a bag of kale…" autocomplete="off">
+        <button type="submit" id="cookBtn">Ask</button>
+      </form>
+      <div class="cook-examples">Try:
+        <button type="button" data-ex="steelhead trout">steelhead trout</button> ·
+        <button type="button" data-ex="paneer">paneer</button> ·
+        <button type="button" data-ex="eggplant">eggplant</button> ·
+        <button type="button" data-ex="ground lamb">ground lamb</button>
+      </div>
+    </div>
+    <div id="cookOut"></div>
+  </section>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const els = {
+    q: $('#q'), searchWrap: $('#searchWrap'), clearQ: $('#clearQ'), sort: $('#sort'),
+    ratingSeg: $('#ratingSeg'), chips: $('#chips'), ingQ: $('#ingQ'), active: $('#active'),
+    count: $('#count'), grid: $('#grid'), status: $('#status'), refresh: $('#refresh'),
+    sheetLink: $('#sheetLink'), dlg: $('#dlg'), dlgBody: $('#dlgBody'),
+    tabs: $('#tabs'), panelRecipes: $('#panel-recipes'), panelCook: $('#panel-cook'),
+    cookForm: $('#cookForm'), cookQ: $('#cookQ'), cookBtn: $('#cookBtn'), cookOut: $('#cookOut'),
+    staplesBtn: $('#staplesBtn'), staplesCount: $('#staplesCount'), staples: $('#staples'),
+    stapleForm: $('#stapleForm'), stapleInput: $('#stapleInput'), stapleChips: $('#stapleChips'), tagList: $('#tagList'),
+  };
+
+  const state = {
+    recipes: [], tagCounts: [],
+    q: '', minStars: 0, sort: localStorage.getItem('rb.sort') || 'stars-desc',
+    tags: new Set(),      // ingredient tags that must all be present
+    free: new Set(),      // free-text ingredient terms (matched against text)
+    showAllChips: false, chipFilter: '', sheetUrl: '#',
+    staples: new Set(), // pantry items hidden from the filter
+  };
+  const CHIP_LIMIT = 36;
+
+  // ---------- helpers
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function highlight(text, terms) {
+    let out = esc(text);
+    if (!terms.length) return out;
+    const rx = new RegExp('(' + terms.map(escRx).join('|') + ')', 'gi');
+    return out.replace(rx, '<mark>$1</mark>');
+  }
+  const stars = (n) => `<span class="stars" title="${n} of 5">${'★'.repeat(n)}<span class="off">${'★'.repeat(Math.max(0, 5 - n))}</span></span>`;
+  const domain = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+  const terms = () => state.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const haystack = (r) => `${r.name}\n${r.instructions}\n${r.notes}\n${r.tags.join(' ')}`.toLowerCase();
+  const ingredientText = (r) => `${r.name}\n${r.instructions}\n${r.tags.join(' ')}`.toLowerCase();
+  const timeAgo = (ts) => {
+    const s = Math.max(0, (Date.now() / 1000) - ts);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.round(s / 60)} min ago`;
+    if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+    return new Date(ts * 1000).toLocaleDateString();
+  };
+
+  // ---------- data
+  async function load(force) {
+    els.refresh.classList.add('spin');
+    els.status.innerHTML = '<span class="dot warn"></span>Loading…';
+    try {
+      const res = await fetch('/api/recipes' + (force ? '?refresh=1' : ''));
+      const data = await res.json();
+      state.recipes = data.recipes || [];
+      state.sheetUrl = data.sheet_url || '#';
+      els.sheetLink.href = state.sheetUrl;
+      state.staples = new Set(data.staples || []);
+      const counts = {};
+      for (const r of state.recipes) for (const t of r.tags) counts[t] = (counts[t] || 0) + 1;
+      state.tagCounts = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const label = { 'google-sheets-api': 'Live from Google Sheets', 'csv-export': 'Live from Google Sheets (CSV)', 'cache': 'Cached snapshot' }[data.source] || 'Unknown source';
+      const dot = data.source === 'cache' ? 'warn' : 'ok';
+      els.status.innerHTML = `<span class="dot ${dot}"></span>${label} · ${state.recipes.length} recipes · synced ${timeAgo(data.fetched_at)}`;
+      if (data.error) els.status.title = data.error; else els.status.removeAttribute('title');
+      if (!state.recipes.length) els.status.innerHTML = `<span class="dot err"></span>Couldn't load recipes${data.error ? ': ' + esc(data.error) : ''}`;
+    } catch (e) {
+      els.status.innerHTML = `<span class="dot err"></span>Server unreachable`;
+    }
+    els.refresh.classList.remove('spin');
+    renderStaples(); renderChips(); render();
+  }
+
+  const isStaple = (t) => state.staples.has(t);
+  const visibleTags = (r) => r.tags.filter((t) => !isStaple(t));
+
+  async function saveStaples() {
+    for (const t of state.staples) state.tags.delete(t);
+    try {
+      const res = await fetch('/api/staples', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staples: [...state.staples] }) });
+      const data = await res.json();
+      state.staples = new Set(data.staples || []);
+    } catch (e) { /* keep local state; server will be retried on next save */ }
+    renderStaples(); renderChips(); render();
+  }
+
+  function renderStaples() {
+    const list = [...state.staples].sort();
+    els.staplesCount.textContent = list.length ? `(${list.length})` : '';
+    els.stapleChips.innerHTML = list.length
+      ? list.map((t) => `<button class="chip" type="button" data-unstaple="${esc(t)}" title="Remove from staples">${esc(t)} <span class="x">✕</span></button>`).join('')
+      : '<span class="hint" style="font-size:13px;color:var(--ink-3)">No staples yet.</span>';
+    els.tagList.innerHTML = state.tagCounts.filter(([t]) => !isStaple(t)).map(([t]) => `<option value="${esc(t)}">`).join('');
+  }
+
+  // ---------- filtering
+  function filtered() {
+    const ts = terms();
+    const free = [...state.free];
+    let list = state.recipes.filter((r) => {
+      if (r.stars < state.minStars) return false;
+      for (const t of state.tags) if (!r.tags.includes(t)) return false;
+      if (free.length) { const it = ingredientText(r); for (const f of free) if (!it.includes(f)) return false; }
+      if (ts.length) { const h = haystack(r); for (const t of ts) if (!h.includes(t)) return false; }
+      return true;
+    });
+    const s = state.sort;
+    list.sort((a, b) => {
+      if (s === 'stars-desc') return b.stars - a.stars || a.id - b.id;
+      if (s === 'stars-asc') return a.stars - b.stars || a.id - b.id;
+      if (s === 'name') return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      if (s === 'sheet-rev') return b.id - a.id;
+      return a.id - b.id;
+    });
+    return list;
+  }
+
+  // ---------- rendering
+  function renderChips() {
+    const f = state.chipFilter.trim().toLowerCase();
+    let items = state.tagCounts.filter(([t]) => !isStaple(t));
+    if (f) items = items.filter(([t]) => t.includes(f));
+    const limit = (state.showAllChips || f) ? Infinity : CHIP_LIMIT;
+    let html = items.slice(0, limit).map(([t, n]) =>
+      `<button class="chip ${state.tags.has(t) ? 'on' : ''}" data-tag="${esc(t)}">${esc(t)}<span class="n">${n}</span></button>`).join('');
+    if (items.length > limit) html += `<button class="chip more" data-more="1">+ ${items.length - limit} more</button>`;
+    else if (state.showAllChips && !f) html += `<button class="chip more" data-more="0">show fewer</button>`;
+    if (f && !items.length) html += `<span class="hint" style="font-size:13px;color:var(--ink-3)">No tag matches "${esc(state.chipFilter)}" — press Enter to search recipe text for it.</span>`;
+    els.chips.innerHTML = html;
+  }
+
+  function renderActive() {
+    const parts = [];
+    for (const t of state.tags) parts.push(`<button class="chip on" data-rm-tag="${esc(t)}">${esc(t)} <span class="x">✕</span></button>`);
+    for (const f of state.free) parts.push(`<button class="chip on free" data-rm-free="${esc(f)}">“${esc(f)}” <span class="x">✕</span></button>`);
+    if (state.minStars) parts.push(`<button class="chip on" data-rm-stars="1">${state.minStars}★${state.minStars < 5 ? '+' : ''} <span class="x">✕</span></button>`);
+    if (parts.length) parts.unshift('<span>Filtering by</span>'), parts.push('<button class="clear-all" data-clear-all="1">Clear all</button>');
+    els.active.innerHTML = parts.join('');
+  }
+
+  function render() {
+    renderActive();
+    const list = filtered();
+    const ts = terms();
+    const hl = ts.concat([...state.free]);
+    const total = state.recipes.length;
+    els.count.textContent = list.length === total ? `${total} recipes` : `${list.length} of ${total} recipes`;
+    els.searchWrap.classList.toggle('has-value', !!state.q);
+    if (!list.length) {
+      els.grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No recipes match</b>Try fewer ingredients or a different search.</div>`;
+      return;
+    }
+    els.grid.innerHTML = list.map((r) => {
+      const snippet = r.url
+        ? `Linked recipe · ${esc(domain(r.url))}`
+        : highlight(r.instructions.replace(/\s+/g, ' '), hl);
+      const vt = visibleTags(r);
+      const tags = vt.slice(0, 6).map((t) => `<span class="tag ${state.tags.has(t) ? 'hit' : ''}">${esc(t)}</span>`).join('')
+        + (vt.length > 6 ? `<span class="tag">+${vt.length - 6}</span>` : '');
+      return `<button class="card" data-id="${r.id}">
+        <h3>${highlight(r.name, hl)}</h3>
+        <div class="meta">${stars(r.stars)}${r.url ? '<span class="badge">link</span>' : ''}</div>
+        <div class="snippet">${snippet}</div>
+        ${r.notes ? `<div class="notes">${highlight(r.notes.replace(/\s+/g, ' '), hl)}</div>` : ''}
+        <div class="tags">${tags}</div>
+      </button>`;
+    }).join('');
+  }
+
+  function openDetail(id) {
+    const r = state.recipes.find((x) => x.id === id);
+    if (!r) return;
+    const rowUrl = state.sheetUrl.replace(/#gid=(\d+)$/, `#gid=$1&range=A${r.id + 1}`);
+    const paragraphs = (t) => t.split(/\n{2,}/).map((p) => `<p>${esc(p)}</p>`).join('');
+    els.dlgBody.innerHTML = `
+      <div class="dlg-head"><h2>${esc(r.name)}</h2><button class="close" data-close="1" aria-label="Close">✕</button></div>
+      <div class="meta">${stars(r.stars)}<span class="badge">${r.stars} / 5</span></div>
+      ${r.url ? `<h4>Recipe</h4><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p>` : `<h4>Instructions</h4>${paragraphs(r.instructions)}`}
+      ${r.notes ? `<h4>Notes</h4><div class="notes-box">${paragraphs(r.notes)}</div>` : ''}
+      ${visibleTags(r).length ? `<h4>Ingredients spotted</h4><div class="tags">${visibleTags(r).map((t) => `<button class="tag" data-tag="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}
+      ${r.tags.some(isStaple) ? `<h4>Staples</h4><div class="tags">${r.tags.filter(isStaple).map((t) => `<span class="tag staple">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div class="links">
+        ${r.url ? `<a class="btn" href="${esc(r.url)}" target="_blank" rel="noopener">Open recipe ↗</a>` : ''}
+        <a class="btn" href="${esc(rowUrl)}" target="_blank" rel="noopener">Edit row in sheet ↗</a>
+      </div>`;
+    els.dlg.showModal();
+  }
+
+  // ---------- events
+  els.q.addEventListener('input', () => { state.q = els.q.value; render(); });
+  els.clearQ.addEventListener('click', () => { els.q.value = ''; state.q = ''; render(); els.q.focus(); });
+  els.sort.value = state.sort;
+  els.sort.addEventListener('change', () => { state.sort = els.sort.value; localStorage.setItem('rb.sort', state.sort); render(); });
+  els.ratingSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.minStars = +b.dataset.min;
+    [...els.ratingSeg.children].forEach((x) => x.classList.toggle('on', x === b));
+    render();
+  });
+  els.ingQ.addEventListener('input', () => { state.chipFilter = els.ingQ.value; renderChips(); });
+  els.ingQ.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const v = els.ingQ.value.trim().toLowerCase(); if (!v) return;
+    const exact = state.tagCounts.find(([t]) => t === v);
+    if (exact && !isStaple(v)) state.tags.add(v); else state.free.add(v);
+    els.ingQ.value = ''; state.chipFilter = '';
+    renderChips(); render();
+  });
+  els.chips.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.more !== undefined) { state.showAllChips = b.dataset.more === '1'; renderChips(); return; }
+    const t = b.dataset.tag;
+    state.tags.has(t) ? state.tags.delete(t) : state.tags.add(t);
+    renderChips(); render();
+  });
+  els.active.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.rmTag) state.tags.delete(b.dataset.rmTag);
+    if (b.dataset.rmFree) state.free.delete(b.dataset.rmFree);
+    if (b.dataset.rmStars || b.dataset.clearAll) { state.minStars = 0; [...els.ratingSeg.children].forEach((x) => x.classList.toggle('on', x.dataset.min === '0')); }
+    if (b.dataset.clearAll) { state.tags.clear(); state.free.clear(); state.q = ''; els.q.value = ''; }
+    renderChips(); render();
+  });
+  els.grid.addEventListener('click', (e) => {
+    const c = e.target.closest('.card'); if (c) openDetail(+c.dataset.id);
+  });
+  els.dlgBody.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.close) els.dlg.close();
+    if (b.dataset.tag) { state.tags.add(b.dataset.tag); els.dlg.close(); renderChips(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  });
+  els.dlg.addEventListener('click', (e) => { if (e.target === els.dlg) els.dlg.close(); });
+  els.dlg.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); els.dlg.close(); } });
+  els.refresh.addEventListener('click', () => load(true));
+  els.staplesBtn.addEventListener('click', () => {
+    els.staples.hidden = !els.staples.hidden;
+    els.staplesBtn.classList.toggle('open', !els.staples.hidden);
+    if (!els.staples.hidden) els.stapleInput.focus();
+  });
+  function addStaple() {
+    const v = els.stapleInput.value.trim().toLowerCase(); if (!v) return;
+    state.staples.add(v); els.stapleInput.value = '';
+    saveStaples();
+  }
+  els.stapleForm.addEventListener('submit', (e) => { e.preventDefault(); addStaple(); });
+  els.stapleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addStaple(); } });
+  els.stapleChips.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-unstaple]'); if (!b) return;
+    state.staples.delete(b.dataset.unstaple);
+    saveStaples();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== els.q && document.activeElement !== els.ingQ) { e.preventDefault(); els.q.focus(); }
+    if (e.key === 'Escape' && document.activeElement === els.q && els.q.value) { els.q.value = ''; state.q = ''; render(); }
+  });
+
+  // ---------- tabs
+  function showTab(name) {
+    [...els.tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+    els.panelRecipes.hidden = name !== 'recipes';
+    els.panelCook.hidden = name !== 'cook';
+    try { localStorage.setItem('rb.tab', name); } catch (e) {}
+    if (name === 'cook') els.cookQ.focus();
+  }
+  els.tabs.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.tab); });
+
+  // ---------- cook with X
+  let cookBusy = false;
+  async function cook(ingredient, force) {
+    ingredient = ingredient.trim();
+    if (!ingredient || cookBusy) return;
+    cookBusy = true; els.cookBtn.disabled = true; els.cookQ.value = ingredient;
+    els.cookOut.innerHTML = `<div class="cook-status"><div class="spinner"></div>Reading through ${state.recipes.length} recipes for <b>${esc(ingredient)}</b>…<br><span style="font-size:12px;color:var(--ink-3)">usually 20–60 seconds</span></div>`;
+    try {
+      const url = `/api/cook?ingredient=${encodeURIComponent(ingredient)}${force ? '&refresh=1' : ''}`;
+      const data = await (await fetch(url)).json();
+      renderCook(data);
+    } catch (e) {
+      renderCook({ error: 'network', message: 'Could not reach the server.' });
+    }
+    cookBusy = false; els.cookBtn.disabled = false;
+  }
+
+  function renderCook(d) {
+    if (d.error) {
+      const setup = d.error === 'no_api_key' || d.error === 'no_sdk';
+      els.cookOut.innerHTML = `<div class="cook-error"><b>${setup ? 'One-time setup needed' : 'Something went wrong'}</b>${esc(d.message)}${
+        d.error === 'no_api_key' ? '<br><br>In the terminal, before starting the server:<br><code>export ANTHROPIC_API_KEY=sk-ant-…</code><br><code>uv run recipes/server.py</code>' : ''}</div>`;
+      return;
+    }
+    const fitClass = { 'substitute': 'sub', 'addition': 'add', 'already uses it': 'uses' };
+    const cards = d.matches.map((m) => {
+      const r = state.recipes.find((x) => x.id === m.id); if (!r) return '';
+      return `<div class="cook-card">
+        <div class="top"><h3><button data-open="${r.id}">${esc(r.name)}</button></h3><span class="fit ${fitClass[m.fit] || 'uses'}">${esc(m.fit)}</span></div>
+        <div class="meta">${stars(r.stars)}</div>
+        ${m.replaces ? `<div class="replaces">Stands in for <b>${esc(m.replaces)}</b></div>` : ''}
+        <div class="how">${esc(m.how)}</div>
+        <div class="conf">${esc(m.confidence)} confidence · click the name for the full recipe</div>
+      </div>`;
+    }).join('');
+    const idea = d.new_idea ? `<div class="cook-card idea">
+        <div class="top"><h3>${esc(d.new_idea.name)}</h3><span class="fit add">new idea</span></div>
+        <div class="how">${esc(d.new_idea.how)}</div></div>` : '';
+    els.cookOut.innerHTML = `
+      <div class="cook-summary">${esc(d.summary)}</div>
+      <div class="cook-meta">${d.cached ? 'Saved answer from earlier' : 'Fresh answer'} · ${esc(d.model || '')} · <button data-recook="${esc(d.ingredient)}">Ask again</button></div>
+      <div class="cook-grid">${cards}${idea}</div>`;
+  }
+
+  els.cookForm.addEventListener('submit', (e) => { e.preventDefault(); cook(els.cookQ.value, false); });
+  els.panelCook.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.ex) cook(b.dataset.ex, false);
+    if (b.dataset.recook) cook(b.dataset.recook, true);
+    if (b.dataset.open) openDetail(+b.dataset.open);
+  });
+
+  let savedTab = 'recipes';
+  try { savedTab = localStorage.getItem('rb.tab') || 'recipes'; } catch (e) {}
+  if (savedTab === 'cook') showTab('cook');
+
+  load(false);
+})();
+</script>
+</body>
+</html>
