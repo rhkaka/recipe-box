@@ -439,7 +439,7 @@
     els.refresh.classList.add('spin');
     els.status.innerHTML = '<span class="dot warn"></span>Loading…';
     try {
-      const res = await fetch(STATIC ? 'data.json' : '/api/recipes' + (force ? '?refresh=1' : ''));
+      const res = await fetch(STATIC ? 'data.json' : '/api/recipes' + (force ? '?refresh=1' : ''), STATIC ? { cache: 'no-store' } : undefined);
       let data = await res.json();
       if (STATIC && data.encrypted) data = await unlock(data);
       state.recipes = data.recipes || [];
